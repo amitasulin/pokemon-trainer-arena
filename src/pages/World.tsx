@@ -135,7 +135,7 @@ export default function World() {
       </div>
 
       {/* Bottom toolbar */}
-      <div className="relative z-20 shrink-0 px-3 pb-3">
+      <div className="relative z-20 shrink-0 px-2 pb-2 md:px-3 md:pb-3">
         {/* Expanded team / area panel */}
         {openPanel === 'team' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-2 p-3 bg-gray-950/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
@@ -166,12 +166,12 @@ export default function World() {
         )}
 
         {/* Area selector chips */}
-        <motion.div layout className="mb-2 flex flex-wrap justify-center gap-2">
+        <motion.div layout className="mb-1.5 flex flex-wrap justify-center gap-1 md:mb-2 md:gap-2">
           {areas.filter(a => a.unlocked).map(a => (
             <button
               key={a.id}
               onClick={() => handleAreaChange(a.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-xl border transition-all shadow-lg ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-xl border transition-all shadow-lg md:px-3 md:py-1.5 md:text-sm ${
                 trainer.currentArea === a.id
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-white/30 scale-105'
                   : 'bg-gray-950/60 text-gray-200 border-white/10 hover:bg-gray-800/70'
@@ -184,20 +184,20 @@ export default function World() {
         </motion.div>
 
         {/* Feature buttons */}
-        <div className="bg-gray-950/70 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 shadow-2xl shadow-black/50">
-          <div className="flex items-center justify-center gap-1 overflow-x-auto">
+        <div className="bg-gray-950/70 backdrop-blur-2xl border border-white/10 rounded-xl p-1.5 shadow-2xl shadow-black/50 md:rounded-2xl md:p-2">
+          <div className="flex items-center justify-center gap-0.5 overflow-x-auto">
             {tools.map(t => (
               <button
                 key={t.key}
                 onClick={t.action}
-                className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all md:px-4 md:py-2 md:rounded-xl ${
                   openPanel === t.key
                     ? 'bg-white/15 text-white scale-105 shadow-inner'
                     : 'text-gray-200 hover:bg-white/10 hover:text-white active:scale-95'
                 }`}
               >
-                <span className="text-xl leading-none drop-shadow">{t.icon}</span>
-                <span className="text-[11px]">{t.label}</span>
+                <span className="text-lg leading-none drop-shadow md:text-xl">{t.icon}</span>
+                <span className="text-[10px] md:text-[11px]">{t.label}</span>
               </button>
             ))}
           </div>

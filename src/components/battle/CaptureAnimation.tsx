@@ -31,8 +31,15 @@ export default function CaptureAnimation({ isCapturing, animation, enemyPosition
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 z-20 pointer-events-none"
-          style={{ top, right, transform: 'translate(50%, -50%)' }}
+          className="absolute z-20 pointer-events-none"
+          style={{
+            top,
+            right,
+            width: 'min(86vw, 520px)',
+            height: 'min(72vh, 460px)',
+            transform: 'translate(50%, -50%)',
+            touchAction: 'none',
+          }}
         >
           {/* Background darken */}
           <motion.div
