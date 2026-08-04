@@ -1,8 +1,9 @@
-import { useRef, useMemo, useState, useEffect, useCallback, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useRef, useMemo, useState, useEffect, useCallback, Suspense, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
+import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import { OrbitControls, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { AREAS_DATA, scaleGrid, MAP_SCALE } from './areasData'
+import { WILD_POKEMON_AREAS } from '../../types/pokemon'
 
 type TileKind =
   | 'grass' | 'tallgrass' | 'flower' | 'path' | 'tree' | 'house'
@@ -347,6 +348,24 @@ const MOVE_DELTA: Record<string, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 }
 
+// ---------- Roaming wild Pokémon (billboard sprite) ----------
+function Roaming({ x, z, image, phase }: { x: number; z: number; image: string; phase: number }) {
+  const tex = useLoader(THREE.TextureLoader, image)
+  const ref = useRef<THREE.Sprite>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime + phase
+    if (ref.current) {
+      ref.current.position.y = 0.85 + Math.sin(t * 1.6) * 0.14
+      ref.current.material.rotation = Math.sin(t * 1.1) * 0.18
+    }
+  })
+  return (
+    <sprite ref={ref} position={[x, 0.85, z]} scale={[2, 2, 1]}>
+      <spriteMaterial map={tex} transparent depthWrite={false} />
+    </sprite>
+  )
+}
+
 // ---------- Auto-fit world: scale so the map always fits the screen ----------
 function ScaledWorld({ cols, rows, zoom, children }: { cols: number; rows: number; zoom: number; children: ReactNode }) {
   const { viewport } = useThree()
@@ -381,6 +400,41 @@ export default function GameMap3D({
   const [moving, setMoving] = useState(false)
   const [direction, setDirection] = useState<'up'|'down'|'left'|'right'>('down')
   const [zoom, setZoom] = useState(1)
+  const [battleTick, setBattleTick] = useState(0)
+  const battledRef = useRef<Set<string>>(new Set())
+
+  // Visible wild Pokémon roaming the map (one per species pool, on walkable tiles)
+  const wildSpecies = useMemo(() => WILD_POKEMON_AREAS[trainer.currentArea] ?? WILD_POKEMON_AREAS['route1'], [trainer.currentArea])
+  const roamings = useMemo(() => {
+    const spots: { key: string; x: number; z: number; gx: number; gz: number; image: string }[] = []
+    const candidates: { x: number; z: number }[] = []
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const t = to3D(grid[r][c])
+      if (!t.solid && t.encounter) candidates.push({ x: c, z: r })
+    }
+    const count = Math.min(8, candidates.length)
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor(Math.random() * candidates.length)
+      const { x, z } = candidates[idx]
+      candidates.splice(idx, 1)
+      const sp = wildSpecies[i % wildSpecies.length]
+      spots.push({
+        key: `${x},${z}`,
+        x: x - cols / 2 + 0.5,
+        z: z - rows / 2 + 0.5,
+        gx: x,
+        gz: z,
+        image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${sp.id}.png`,
+      })
+    }
+    return spots
+  }, [rows, cols, grid, wildSpecies])
+  const visibleRoamings = useMemo(() => roamings.filter(r => !battledRef.current.has(r.key)), [roamings, battleTick])
+  const roamingSet = useMemo(() => {
+    const s = new Set<string>()
+    roamings.forEach(r => { if (!battledRef.current.has(r.key)) s.add(`${r.gx},${r.gz}`) })
+    return s
+  }, [roamings, battleTick])
 
   // Keep a live copy of the logical position for async/interval handling
   const posRef = useRef({ x, y })
@@ -410,11 +464,13 @@ export default function GameMap3D({
     setDirection(dir)
     setMoving(true)
     onMove(nx, ny)
-    if (dest.encounter && Math.random() < 0.45) {
+    const isRoam = roamingSet.has(`${nx},${ny}`)
+    if ((dest.encounter && Math.random() < 0.45) || isRoam) {
+      if (isRoam) { battledRef.current.add(`${nx},${ny}`); setBattleTick(t => t + 1) }
       if (pendEncRef.current) clearTimeout(pendEncRef.current)
       pendEncRef.current = setTimeout(onEncounter, 550)
     }
-  }, [rows, cols, grid, onMove, onEncounter])
+  }, [rows, cols, grid, onMove, onEncounter, roamingSet])
 
   const pressDir = useCallback((dir: 'up'|'down'|'left'|'right') => {
     heldRef.current.add(dir)
@@ -508,6 +564,12 @@ export default function GameMap3D({
           }))}
 
           <Player3D x={wx} z={wz} direction={direction} moving={moving} />
+
+          <Suspense fallback={null}>
+            {visibleRoamings.map((r, i) => (
+              <Roaming key={r.key} x={r.x} z={r.z} image={r.image} phase={i * 2.1} />
+            ))}
+          </Suspense>
 
           <ContactShadows position={[0, 0.01, 0]} opacity={0.4} scale={Math.max(cols, rows) + 4} blur={2.6} far={5} frames={1} />
         </ScaledWorld>
