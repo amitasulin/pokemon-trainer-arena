@@ -376,7 +376,9 @@ function ScaledWorld({ cols, rows, zoom, children }: { cols: number; rows: numbe
   const fit = useMemo(() => {
     const w = viewport.width / cols
     const h = viewport.height / rows
-    return Math.min(w, h)
+    const base = Math.min(w, h)
+    const boost = viewport.width < viewport.height ? 1.35 : 1
+    return base * boost
   }, [viewport.width, viewport.height, cols, rows])
   return <group scale={fit * zoom}>{children}</group>
 }

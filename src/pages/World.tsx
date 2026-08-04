@@ -87,8 +87,8 @@ export default function World() {
   ]
 
   return (
-    <div className="relative h-screen w-screen flex flex-col overflow-hidden">
-      {/* Animated background behind the map */}
+    <div className="relative h-screen w-screen overflow-hidden">
+      {/* Full-screen animated background */}
       <div className="absolute inset-0 z-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 animate-world-drift" />
       <div
         className="absolute inset-0 z-0 opacity-50"
@@ -96,19 +96,19 @@ export default function World() {
       />
       <div className="pointer-events-none absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
 
-      {/* Map area */}
-      <div className="flex-1 min-h-0 relative z-10 p-3 pb-2">
-        <div className="relative w-full h-full rounded-3xl overflow-hidden animate-map-frame ring-1 ring-indigo-500/30 shadow-2xl shadow-black/50">
+      {/* Full-screen map */}
+      <div className="absolute inset-0 z-10">
+        <div className="relative w-full h-full overflow-hidden animate-map-frame">
           <GameMap3D trainer={trainer} onMove={handleMove} onEncounter={handleEncounter} />
 
           {/* Top HUD - centered */}
-          <div className="absolute top-0 inset-x-0 z-20 flex justify-center pt-4 px-4">
-            <div className="flex items-center gap-4 bg-gray-950/70 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-3 shadow-2xl shadow-black/40">
-              <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-lg border-2 border-white/20 shadow-lg">
+          <div className="absolute top-0 inset-x-0 z-20 flex justify-center pt-3 px-3">
+            <div className="flex items-center gap-3 bg-gray-950/70 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-2 shadow-2xl shadow-black/40">
+              <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-lg border-2 border-white/20 shadow-lg">
                 {trainer.avatar}
               </motion.div>
               <div>
-                <h1 className="text-white font-black text-lg leading-tight tracking-wide">{trainer.name}</h1>
+                <h1 className="text-white font-black text-base leading-tight tracking-wide">{trainer.name}</h1>
                 <div className="flex items-center gap-2 text-xs text-gray-300 mt-0.5">
                   <span className="flex items-center gap-1"><span className="text-yellow-400">💰</span>{trainer.money}</span>
                   <span className="text-gray-600">•</span>
@@ -134,8 +134,8 @@ export default function World() {
         </div>
       </div>
 
-      {/* Bottom toolbar */}
-      <div className="relative z-20 shrink-0 px-2 pb-2 md:px-3 md:pb-3">
+      {/* Bottom toolbar - overlay */}
+      <div className="absolute bottom-0 inset-x-0 z-20 px-2 pb-2">
         {/* Expanded team / area panel */}
         {openPanel === 'team' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-2 p-3 bg-gray-950/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
@@ -166,15 +166,15 @@ export default function World() {
         )}
 
         {/* Area selector chips */}
-        <motion.div layout className="mb-1.5 flex flex-wrap justify-center gap-1 md:mb-2 md:gap-2">
+        <motion.div layout className="mb-2 flex flex-wrap justify-center gap-1.5 md:gap-2">
           {areas.filter(a => a.unlocked).map(a => (
             <button
               key={a.id}
               onClick={() => handleAreaChange(a.id)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-xl border transition-all shadow-lg md:px-3 md:py-1.5 md:text-sm ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-xl border transition-all shadow-lg md:px-4 ${
                 trainer.currentArea === a.id
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-white/30 scale-105'
-                  : 'bg-gray-950/60 text-gray-200 border-white/10 hover:bg-gray-800/70'
+                  : 'bg-gray-950/70 text-gray-100 border-white/15 hover:bg-gray-800/70'
               }`}
               style={{ boxShadow: trainer.currentArea === a.id ? '0 0 20px rgba(99,102,241,0.4)' : undefined }}
             >
@@ -184,20 +184,20 @@ export default function World() {
         </motion.div>
 
         {/* Feature buttons */}
-        <div className="bg-gray-950/70 backdrop-blur-2xl border border-white/10 rounded-xl p-1.5 shadow-2xl shadow-black/50 md:rounded-2xl md:p-2">
-          <div className="flex items-center justify-center gap-0.5 overflow-x-auto">
+        <div className="bg-gray-950/70 backdrop-blur-2xl border border-white/15 rounded-2xl p-2 shadow-2xl shadow-black/60">
+          <div className="flex items-center justify-center gap-1 overflow-x-auto">
             {tools.map(t => (
               <button
                 key={t.key}
                 onClick={t.action}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all md:px-4 md:py-2 md:rounded-xl ${
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold transition-all md:px-5 ${
                   openPanel === t.key
                     ? 'bg-white/15 text-white scale-105 shadow-inner'
-                    : 'text-gray-200 hover:bg-white/10 hover:text-white active:scale-95'
+                    : 'text-gray-100 hover:bg-white/10 hover:text-white active:scale-95'
                 }`}
               >
-                <span className="text-lg leading-none drop-shadow md:text-xl">{t.icon}</span>
-                <span className="text-[10px] md:text-[11px]">{t.label}</span>
+                <span className="text-2xl leading-none drop-shadow">{t.icon}</span>
+                <span className="text-xs">{t.label}</span>
               </button>
             ))}
           </div>

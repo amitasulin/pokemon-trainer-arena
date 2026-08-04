@@ -28,6 +28,11 @@ export default function BattleHUD({ active, position, isShaking, isFainting }: P
         transition={isFainting ? { duration: 0.8 } : isShaking ? { duration: 0.35 } : { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
       >
         <div className="relative">
+          {/* Shadow platform under the sprite for visibility */}
+          <div
+            className="absolute -inset-6 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 45%, transparent 70%)' }}
+          />
           <motion.div
             animate={defending ? { scale: [1, 1.05, 1] } : {}}
             transition={{ duration: 1, repeat: Infinity }}
@@ -62,7 +67,7 @@ export default function BattleHUD({ active, position, isShaking, isFainting }: P
 
       {/* HUD Panel */}
       <motion.div
-        className={`${position === 'enemy' ? 'order-1' : 'order-2'} rounded-2xl p-3 border-2 min-w-[190px] shadow-xl backdrop-blur`}
+        className={`${position === 'enemy' ? 'order-1' : 'order-2'} rounded-2xl p-2.5 sm:p-3 border-2 min-w-[120px] sm:min-w-[190px] shadow-xl backdrop-blur`}
         style={{ background: `linear-gradient(135deg, ${typeColor}15 0%, rgb(17,24,39) 100%)` }}
         animate={
           isShaking
