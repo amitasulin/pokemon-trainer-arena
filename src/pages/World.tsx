@@ -39,6 +39,7 @@ export default function World() {
   const handleMove = (x: number, y: number) => updatePosition(x, y)
 
   const handleEncounter = () => {
+    if (battle.state !== 'idle') return
     const areaPokemon = WILD_POKEMON_AREAS[trainer.currentArea]
     if (!areaPokemon || areaPokemon.length === 0) return
     const species = areaPokemon[Math.floor(Math.random() * areaPokemon.length)]

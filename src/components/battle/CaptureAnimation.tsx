@@ -4,7 +4,6 @@ import PokeBall from './PokeBall'
 interface Props {
   isCapturing: boolean
   animation: 'idle' | 'shaking' | 'success' | 'fail'
-  enemyPosition?: { top: string; right: string }
 }
 
 const stars = [...Array(12)].map((_, i) => ({
@@ -21,8 +20,7 @@ const particles = [...Array(20)].map(() => ({
   color: ['#FFD700', '#FFF', '#FFEC8B', '#FFA500', '#FFF8DC'][Math.floor(Math.random() * 5)],
 }))
 
-export default function CaptureAnimation({ isCapturing, animation, enemyPosition = { top: '5%', right: '5%' } }: Props) {
-  const { top, right } = enemyPosition
+export default function CaptureAnimation({ isCapturing, animation }: Props) {
 
   return (
     <AnimatePresence>
@@ -31,15 +29,8 @@ export default function CaptureAnimation({ isCapturing, animation, enemyPosition
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute z-20 pointer-events-none"
-          style={{
-            top,
-            right,
-            width: 'min(86vw, 520px)',
-            height: 'min(72vh, 460px)',
-            transform: 'translate(50%, -50%)',
-            touchAction: 'none',
-          }}
+          className="absolute inset-0 z-30 pointer-events-none"
+          style={{ touchAction: 'none' }}
         >
           {/* Background darken */}
           <motion.div
@@ -53,27 +44,18 @@ export default function CaptureAnimation({ isCapturing, animation, enemyPosition
           {/* === THROW PHASE (shaking state = ball flying + shaking) === */}
           {animation === 'shaking' && (
             <>
-              {/* Pokéball flying from bottom-left with arc TO enemy position */}
+              {/* Pokéball flying from player side TO enemy (parent-relative %) */}
               <motion.div
                 className="absolute"
-                initial={{
-                  x: '-80%',
-                  y: '80%',
-                  scale: 0.4,
-                  rotate: 0,
-                  opacity: 0,
-                }}
+                initial={{ left: '6%', top: '62%', scale: 0.4, rotate: 0, opacity: 0 }}
                 animate={{
-                  x: [0, '0%', 0],
-                  y: ['80%', '-10%', '0%'],
-                  scale: [0.4, 1.1, 1],
+                  left: ['6%', '55%', '70%'],
+                  top: ['62%', '36%', '14%'],
+                  scale: [0.4, 1.1, 0.95],
                   rotate: [0, 360, 720],
                   opacity: [0, 1, 1],
                 }}
-                transition={{
-                  duration: 0.7,
-                  ease: [0.34, 1.56, 0.64, 1],
-                }}
+                transition={{ duration: 0.75, ease: [0.34, 1.56, 0.64, 1] }}
               >
                 <PokeBall animation="throw" size={64} />
               </motion.div>

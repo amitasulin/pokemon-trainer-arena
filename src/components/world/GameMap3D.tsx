@@ -411,6 +411,7 @@ export default function GameMap3D({
   const heldRef = useRef<Set<string>>(new Set())
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const idleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendEncRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const stopHold = useCallback(() => {
     if (holdTimerRef.current) { clearInterval(holdTimerRef.current); holdTimerRef.current = null }
@@ -432,7 +433,10 @@ export default function GameMap3D({
     setDirection(dir)
     setMoving(true)
     onMove(nx, ny)
-    if (dest.encounter && Math.random() < 0.28) setTimeout(onEncounter, 550)
+    if (dest.encounter && Math.random() < 0.28) {
+      if (pendEncRef.current) clearTimeout(pendEncRef.current)
+      pendEncRef.current = setTimeout(onEncounter, 550)
+    }
   }, [rows, cols, grid, onMove, onEncounter])
 
   const pressDir = useCallback((dir: 'up'|'down'|'left'|'right') => {
@@ -474,7 +478,7 @@ export default function GameMap3D({
     const stop = () => { if (holdTimerRef.current) clearInterval(holdTimerRef.current); holdTimerRef.current = null }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
-    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); stop() }
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); stop(); if (pendEncRef.current) clearTimeout(pendEncRef.current) }
   }, [pressDir, releaseDir])
 
   return (
