@@ -410,7 +410,7 @@ export default function GameMap3D({
     setDirection(dir)
     setMoving(true)
     onMove(nx, ny)
-    if (dest.encounter && Math.random() < 0.28) {
+    if (dest.encounter && Math.random() < 0.45) {
       if (pendEncRef.current) clearTimeout(pendEncRef.current)
       pendEncRef.current = setTimeout(onEncounter, 550)
     }
@@ -434,24 +434,28 @@ export default function GameMap3D({
     }
   }, [kick, stopHold])
 
-  // ---------- Tap-to-move: walk one tile toward where you tap ----------
-  const tapStep = useCallback((dir: 'up'|'down'|'left'|'right') => {
-    heldRef.current.add(dir)
-    stopHold()
-    kick()
-    heldRef.current.delete(dir)
-    idleRef.current = setTimeout(() => setMoving(false), 260)
-  }, [kick, stopHold])
+  // ---------- Tap-to-move: walk toward where you touch ----------
+  const tapDirRef = useRef<'up'|'down'|'left'|'right' | null>(null)
 
-  const onCanvasTap = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+  const onTapDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if (tapDirRef.current) return
     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[data-ignore-tap]')) return
     const rect = e.currentTarget.getBoundingClientRect()
     const dx = e.clientX - (rect.left + rect.width / 2)
     const dy = e.clientY - (rect.top + rect.height / 2)
-    if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return
+    if (Math.abs(dx) < 16 && Math.abs(dy) < 16) return
     const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
-    tapStep(dir as 'up'|'down'|'left'|'right')
-  }, [tapStep])
+    tapDirRef.current = dir
+    heldRef.current.clear()
+    pressDir(dir as 'up'|'down'|'left'|'right')
+  }, [pressDir])
+
+  const onTapEnd = useCallback(() => {
+    if (tapDirRef.current) {
+      releaseDir(tapDirRef.current)
+      tapDirRef.current = null
+    }
+  }, [releaseDir])
 
   useEffect(() => {
     const KEYMAP: Record<string, string> = {
@@ -478,7 +482,7 @@ export default function GameMap3D({
   }, [pressDir, releaseDir])
 
   return (
-    <div className="w-full h-full relative bg-gradient-to-b from-indigo-950 via-slate-900 to-emerald-950" onClick={onCanvasTap} style={{ touchAction: 'none' }}>
+    <div className="w-full h-full relative bg-gradient-to-b from-indigo-950 via-slate-900 to-emerald-950">
       <Canvas shadows camera={{ position: [0, 30, 25], fov: 55 }}>
         <color attach="background" args={['#0d1530']} />
         <fog attach="fog" args={['#0d1530', 40, 95]} />
@@ -515,6 +519,17 @@ export default function GameMap3D({
         target={[0, 0, 0]}
       />
       </Canvas>
+
+      {/* Transparent tap layer: captures pointer to move the player */}
+      <div
+        className="absolute inset-0 z-[5]"
+        style={{ touchAction: 'none' }}
+        onPointerDown={onTapDown}
+        onPointerUp={onTapEnd}
+        onPointerCancel={onTapEnd}
+        onPointerLeave={onTapEnd}
+        onContextMenu={(e) => e.preventDefault()}
+      />
 
       <div className="absolute top-3 left-3 z-10 px-4 py-2 bg-black/70 backdrop-blur-xl rounded-xl border border-white/10 flex items-center gap-3">
         <span className="w-3 h-3 rounded-full" style={{ background: area.color }} />
