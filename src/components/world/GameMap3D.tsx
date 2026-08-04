@@ -68,8 +68,7 @@ function GrassTuft({ x, z, h = 1 }: { x: number; z: number; h?: number }) {
   )
 }
 
-function Flower({ x, z, color = '#e91e63' }: { x: number; z: number; color?: string }) {
-  return (
+function Flower({ x, z, color = '#e91e63' }: { x: number; z: number; color?: string }) {  return (
     <group position={[x, 0.26, z]}>
       <mesh position={[0, 0.14, 0]}>
         <cylinderGeometry args={[0.02, 0.035, 0.3, 6]} />
@@ -80,6 +79,31 @@ function Flower({ x, z, color = '#e91e63' }: { x: number; z: number; color?: str
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} />
       </mesh>
     </group>
+  )
+}
+
+// ---------- Touch D-pad button ----------
+function DirBtn({ dir, onPress, onRelease, children }: {
+  dir: 'up'|'down'|'left'|'right'
+  onPress: (d: 'up'|'down'|'left'|'right') => void
+  onRelease: (d: 'up'|'down'|'left'|'right') => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md text-white text-xl font-bold active:bg-white/30 flex items-center justify-center"
+      style={{ touchAction: 'none' }}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+        onPress(dir)
+      }}
+      onPointerUp={() => onRelease(dir)}
+      onPointerCancel={() => onRelease(dir)}
+      onPointerLeave={() => onRelease(dir)}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -409,6 +433,24 @@ export default function GameMap3D({
     if (dest.encounter && Math.random() < 0.28) setTimeout(onEncounter, 550)
   }, [rows, cols, grid, onMove, onEncounter])
 
+  const pressDir = useCallback((dir: 'up'|'down'|'left'|'right') => {
+    heldRef.current.add(dir)
+    stopHold()
+    kick()
+    idleRef.current = setTimeout(() => setMoving(false), 320)
+    holdTimerRef.current = setInterval(kick, 140)
+  }, [kick, stopHold])
+
+  const releaseDir = useCallback((dir: 'up'|'down'|'left'|'right') => {
+    heldRef.current.delete(dir)
+    if (heldRef.current.size === 0) {
+      stopHold()
+      idleRef.current = setTimeout(() => setMoving(false), 260)
+    } else {
+      kick()
+    }
+  }, [kick, stopHold])
+
   useEffect(() => {
     const KEYMAP: Record<string, string> = {
       ArrowUp: 'up', w: 'up', W: 'up',
@@ -420,30 +462,18 @@ export default function GameMap3D({
       const dir = KEYMAP[e.key]
       if (!dir) return
       e.preventDefault()
-      heldRef.current.add(dir)
-      stopHold()
-      // Immediate first step, then repeat while held
-      kick()
-      idleRef.current = setTimeout(() => setMoving(false), 320)
-      holdTimerRef.current = setInterval(kick, 140)
+      pressDir(dir as 'up'|'down'|'left'|'right')
     }
     const onUp = (e: KeyboardEvent) => {
       const dir = KEYMAP[e.key]
       if (!dir) return
-      heldRef.current.delete(dir)
-      if (heldRef.current.size === 0) {
-        stopHold()
-        idleRef.current = setTimeout(() => setMoving(false), 260)
-      } else {
-        // switch direction immediately
-        kick()
-      }
+      releaseDir(dir as 'up'|'down'|'left'|'right')
     }
     const stop = () => { if (holdTimerRef.current) clearInterval(holdTimerRef.current); holdTimerRef.current = null }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
     return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); stop() }
-  }, [kick])
+  }, [pressDir, releaseDir])
 
   return (
     <div className="w-full h-full relative bg-gradient-to-b from-indigo-950 via-slate-900 to-emerald-950">
@@ -493,8 +523,7 @@ export default function GameMap3D({
         📍 {x},{y}
       </div>
 
-      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-        <button
+      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">        <button
           onClick={() => setZoom(z => Math.min(1.8, +(z + 0.15).toFixed(2)))}
           className="w-9 h-9 rounded-xl bg-black/70 backdrop-blur border border-white/10 text-white text-xl font-bold hover:bg-white/20 active:scale-90 transition-all"
           aria-label="Zoom in"
@@ -507,6 +536,20 @@ export default function GameMap3D({
           className="w-9 h-9 rounded-lg bg-black/80 backdrop-blur border-white/10 text-white text-xl font-bold hover:bg-white/20 active:scale-90 transition-all"
           aria-label="Zoom out"
         >－</button>
+      </div>
+
+      <div className="absolute bottom-16 left-3 z-20 select-none md:hidden">
+        <div className="grid grid-cols-3 grid-rows-3 gap-1" style={{ touchAction: 'none' }}>
+          <div />
+          <DirBtn dir="up" onPress={pressDir} onRelease={releaseDir}>▲</DirBtn>
+          <div />
+          <DirBtn dir="left" onPress={pressDir} onRelease={releaseDir}>◀</DirBtn>
+          <div className="flex items-center justify-center text-white/40 text-lg">🕹️</div>
+          <DirBtn dir="right" onPress={pressDir} onRelease={releaseDir}>▶</DirBtn>
+          <div />
+          <DirBtn dir="down" onPress={pressDir} onRelease={releaseDir}>▼</DirBtn>
+          <div />
+        </div>
       </div>
 
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 bg-black/60 backdrop-blur rounded-full border border-white/10 text-gray-200 text-xs">
