@@ -9,7 +9,7 @@ import { GYM_LEADERS } from '../types/battle'
 import { createPokemon } from '../utils/xp'
 import { getDefaultMoves } from '../utils/battle'
 
-type ToolKey = 'team' | 'bag' | 'shop' | 'pokedex' | 'profile' | 'settings' | 'gym'
+type ToolKey = 'team' | 'pokedex' | 'profile' | 'settings' | 'gym'
 
 export default function World() {
   const navigate = useNavigate()
@@ -79,8 +79,6 @@ export default function World() {
 
   const tools: { key: ToolKey; icon: string; label: string; action: () => void }[] = [
     { key: 'team', icon: '⚽', label: 'Team', action: () => setOpenPanel(openPanel === 'team' ? null : 'team') },
-    { key: 'bag', icon: '🎒', label: 'Bag', action: () => { setOpenPanel('bag'); setToast('🎒 Still being packed — coming soon!') } },
-    { key: 'shop', icon: '🛒', label: 'Shop', action: () => { setOpenPanel('shop'); setToast('🛒 Shop opens soon!') } },
     { key: 'pokedex', icon: '📖', label: 'Pokédex', action: () => navigate('/pokedex') },
     { key: 'profile', icon: '👤', label: 'Profile', action: () => navigate('/profile') },
     { key: 'gym', icon: '🏟️', label: 'Gym', action: () => handleAreaChange('gym') },
@@ -103,7 +101,7 @@ export default function World() {
           <GameMap3D trainer={trainer} onMove={handleMove} onEncounter={handleEncounter} />
 
           {/* Top HUD - centered */}
-          <div className="absolute top-0 inset-x-0 z-20 flex justify-center pt-3 px-3">
+          <div className="fixed top-0 inset-x-0 z-40 flex justify-center pt-3 px-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
             <div className="flex items-center gap-3 bg-gray-950/70 backdrop-blur-xl border border-white/10 rounded-2xl px-4 py-2 shadow-2xl shadow-black/40">
               <motion.div whileHover={{ scale: 1.1, rotate: 5 }} className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-lg border-2 border-white/20 shadow-lg">
                 {trainer.avatar}
@@ -136,7 +134,7 @@ export default function World() {
       </div>
 
       {/* Bottom toolbar - overlay */}
-      <div className="absolute bottom-0 inset-x-0 z-20 px-2 pb-2">
+      <div className="fixed bottom-0 inset-x-0 z-40 px-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         {/* Expanded team / area panel */}
         {openPanel === 'team' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-2 p-3 bg-gray-950/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl">
@@ -209,7 +207,7 @@ export default function World() {
       {toast && (
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-          className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 px-5 py-2.5 bg-gray-900/90 backdrop-blur-xl border border-white/15 rounded-full shadow-2xl text-white text-sm font-semibold"
+          className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 bg-gray-900/90 backdrop-blur-xl border border-white/15 rounded-full shadow-2xl text-white text-sm font-semibold"
         >
           {toast}
         </motion.div>

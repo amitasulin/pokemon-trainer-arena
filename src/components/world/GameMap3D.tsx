@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useRef, useMemo, useState, useEffect, useCallback, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
@@ -82,30 +82,7 @@ function Flower({ x, z, color = '#e91e63' }: { x: number; z: number; color?: str
   )
 }
 
-// ---------- Touch D-pad button ----------
-function DirBtn({ dir, onPress, onRelease, children }: {
-  dir: 'up'|'down'|'left'|'right'
-  onPress: (d: 'up'|'down'|'left'|'right') => void
-  onRelease: (d: 'up'|'down'|'left'|'right') => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md text-white text-xl font-bold active:bg-white/30 flex items-center justify-center"
-      style={{ touchAction: 'none' }}
-      onPointerDown={(e) => {
-        e.preventDefault()
-        e.currentTarget.setPointerCapture?.(e.pointerId)
-        onPress(dir)
-      }}
-      onPointerUp={() => onRelease(dir)}
-      onPointerCancel={() => onRelease(dir)}
-      onPointerLeave={() => onRelease(dir)}
-    >
-      {children}
-    </button>
-  )
-}
+// ---------- Touch D-pad: removed in favor of tap-to-move ----------
 
 function Boulder({ x, z, s = 1 }: { x: number; z: number; s?: number }) {
   return (
@@ -457,6 +434,25 @@ export default function GameMap3D({
     }
   }, [kick, stopHold])
 
+  // ---------- Tap-to-move: walk one tile toward where you tap ----------
+  const tapStep = useCallback((dir: 'up'|'down'|'left'|'right') => {
+    heldRef.current.add(dir)
+    stopHold()
+    kick()
+    heldRef.current.delete(dir)
+    idleRef.current = setTimeout(() => setMoving(false), 260)
+  }, [kick, stopHold])
+
+  const onCanvasTap = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[data-ignore-tap]')) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const dx = e.clientX - (rect.left + rect.width / 2)
+    const dy = e.clientY - (rect.top + rect.height / 2)
+    if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return
+    const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up')
+    tapStep(dir as 'up'|'down'|'left'|'right')
+  }, [tapStep])
+
   useEffect(() => {
     const KEYMAP: Record<string, string> = {
       ArrowUp: 'up', w: 'up', W: 'up',
@@ -482,7 +478,7 @@ export default function GameMap3D({
   }, [pressDir, releaseDir])
 
   return (
-    <div className="w-full h-full relative bg-gradient-to-b from-indigo-950 via-slate-900 to-emerald-950">
+    <div className="w-full h-full relative bg-gradient-to-b from-indigo-950 via-slate-900 to-emerald-950" onClick={onCanvasTap} style={{ touchAction: 'none' }}>
       <Canvas shadows camera={{ position: [0, 30, 25], fov: 55 }}>
         <color attach="background" args={['#0d1530']} />
         <fog attach="fog" args={['#0d1530', 40, 95]} />
@@ -544,22 +540,12 @@ export default function GameMap3D({
         >－</button>
       </div>
 
-      <div className="absolute bottom-16 left-3 z-20 select-none md:hidden">
-        <div className="grid grid-cols-3 grid-rows-3 gap-1" style={{ touchAction: 'none' }}>
-          <div />
-          <DirBtn dir="up" onPress={pressDir} onRelease={releaseDir}>▲</DirBtn>
-          <div />
-          <DirBtn dir="left" onPress={pressDir} onRelease={releaseDir}>◀</DirBtn>
-          <div className="flex items-center justify-center text-white/40 text-lg">🕹️</div>
-          <DirBtn dir="right" onPress={pressDir} onRelease={releaseDir}>▶</DirBtn>
-          <div />
-          <DirBtn dir="down" onPress={pressDir} onRelease={releaseDir}>▼</DirBtn>
-          <div />
-        </div>
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 bg-black/60 backdrop-blur rounded-full border border-white/10 text-gray-200 text-xs select-none md:hidden">
+        👆 Tap anywhere on the map to walk
       </div>
 
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 bg-black/60 backdrop-blur rounded-full border border-white/10 text-gray-200 text-xs">
-        ⌨️ WASD / Arrows to move · 🌿 Grass = wild battle · ＋ / － to zoom
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 bg-black/60 backdrop-blur rounded-full border border-white/10 text-gray-200 text-xs select-none">
+        ⌨️ WASD / Arrows · 👆 Tap to move · 🌿 Grass = wild battle · ＋ / － zoom
       </div>
     </div>
   )
