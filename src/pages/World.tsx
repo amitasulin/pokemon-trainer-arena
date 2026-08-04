@@ -38,16 +38,20 @@ export default function World() {
 
   const handleMove = (x: number, y: number) => updatePosition(x, y)
 
-  const handleEncounter = () => {
+  const startBattleWith = (species: { id: number; name: string; types: string[]; levelRange: [number, number] }) => {
     if (battle.state !== 'idle') return
-    const areaPokemon = WILD_POKEMON_AREAS[trainer.currentArea]
-    if (!areaPokemon || areaPokemon.length === 0) return
-    const species = areaPokemon[Math.floor(Math.random() * areaPokemon.length)]
     const level = species.levelRange[0] + Math.floor(Math.random() * (species.levelRange[1] - species.levelRange[0] + 1))
     const baseStats = getBaseStats(species.id, species.name, species.types)
     const pokemon = createPokemon({ ...baseStats, image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${species.id}.png` }, level)
     pokemon.moves = getDefaultMoves(pokemon)
     startWildEncounter(pokemon)
+  }
+
+  const handleEncounter = () => {
+    const areaPokemon = WILD_POKEMON_AREAS[trainer.currentArea]
+    if (!areaPokemon || areaPokemon.length === 0) return
+    const species = areaPokemon[Math.floor(Math.random() * areaPokemon.length)]
+    startBattleWith(species)
   }
 
   const areas = [
@@ -98,7 +102,7 @@ export default function World() {
       {/* Full-screen map */}
       <div className="absolute inset-0 z-10">
         <div className="relative w-full h-full overflow-hidden animate-map-frame">
-          <GameMap3D trainer={trainer} onMove={handleMove} onEncounter={handleEncounter} />
+          <GameMap3D trainer={trainer} onMove={handleMove} onEncounter={handleEncounter} onEncounterSpecies={startBattleWith} />
 
           {/* Top HUD - centered */}
           <div className="fixed top-0 inset-x-0 z-40 flex justify-center pt-3 px-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>

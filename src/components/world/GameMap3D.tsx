@@ -409,10 +409,12 @@ export default function GameMap3D({
   trainer,
   onMove,
   onEncounter,
+  onEncounterSpecies,
 }: {
   trainer: { currentArea: string; position: { x: number; y: number } }
   onMove: (x: number, y: number) => void
   onEncounter: () => void
+  onEncounterSpecies: (species: { id: number; name: string; types: string[]; levelRange: [number, number] }) => void
 }) {
   const area = useMemo(() => AREAS_DATA.find(a => a.id === trainer.currentArea) ?? AREAS_DATA[0], [trainer.currentArea])
   const grid = useMemo(() => scaleGrid(area.grid, MAP_SCALE), [area.grid])
@@ -431,7 +433,7 @@ export default function GameMap3D({
   // Visible wild Pokémon roaming the map (one per species pool, on walkable tiles)
   const wildSpecies = useMemo(() => WILD_POKEMON_AREAS[trainer.currentArea] ?? WILD_POKEMON_AREAS['route1'], [trainer.currentArea])
   const roamings = useMemo(() => {
-    const spots: { key: string; x: number; z: number; gx: number; gz: number; image: string; color: string }[] = []
+    const spots: { key: string; x: number; z: number; gx: number; gz: number; image: string; color: string; species: (typeof wildSpecies)[number] }[] = []
     const candidates: { x: number; z: number }[] = []
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const t = to3D(grid[r][c])
@@ -450,16 +452,17 @@ export default function GameMap3D({
         gx: x,
         gz: z,
         color: typeColor(sp.types[0] ?? 'normal'),
+        species: sp,
         image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${sp.id}.png`,
       })
     }
     return spots
   }, [rows, cols, grid, wildSpecies])
   const visibleRoamings = useMemo(() => roamings.filter(r => !battledRef.current.has(r.key)), [roamings, battleTick])
-  const roamingSet = useMemo(() => {
-    const s = new Set<string>()
-    roamings.forEach(r => { if (!battledRef.current.has(r.key)) s.add(`${r.gx},${r.gz}`) })
-    return s
+  const roamingMap = useMemo(() => {
+    const m = new Map<string, (typeof wildSpecies)[number]>()
+    roamings.forEach(r => { if (!battledRef.current.has(r.key)) m.set(r.key, r.species) })
+    return m
   }, [roamings, battleTick])
 
   // Keep a live copy of the logical position for async/interval handling
@@ -490,19 +493,19 @@ export default function GameMap3D({
     setDirection(dir)
     setMoving(true)
     onMove(nx, ny)
-    const isRoam = roamingSet.has(`${nx},${ny}`)
-    if (isRoam) {
-      // Stepping onto a roaming Pokémon = guaranteed immediate battle
+    const sp = roamingMap.get(`${nx},${ny}`)
+    if (sp) {
+      // Stepping onto a roaming Pokémon = immediate battle with THAT Pokémon
       battledRef.current.add(`${nx},${ny}`)
       setBattleTick(t => t + 1)
-      onEncounter()
+      onEncounterSpecies(sp)
       return
     }
     if (dest.encounter && Math.random() < 0.5) {
       if (pendEncRef.current) clearTimeout(pendEncRef.current)
       pendEncRef.current = setTimeout(onEncounter, 300)
     }
-  }, [rows, cols, grid, onMove, onEncounter, roamingSet])
+  }, [rows, cols, grid, onMove, onEncounter, onEncounterSpecies, roamingMap])
 
   const pressDir = useCallback((dir: 'up'|'down'|'left'|'right') => {
     heldRef.current.add(dir)
