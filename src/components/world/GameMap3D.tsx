@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState, useEffect, useCallback, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, ContactShadows } from '@react-three/drei'
+import { ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { AREAS_DATA, scaleGrid, MAP_SCALE } from './areasData'
 import { WILD_POKEMON_AREAS } from '../../types/pokemon'
@@ -391,6 +391,22 @@ function Roamer({ x, z, image, color, phase }: { x: number; z: number; image: st
   )
 }
 
+// ---------- Camera follows the player so they never leave the screen ----------
+function CameraRig({ px, pz, cols, rows, zoom }: { px: number; pz: number; cols: number; rows: number; zoom: number }) {
+  const { camera, viewport } = useThree()
+  useFrame(() => {
+    const boost = viewport.width < viewport.height ? 1.35 : 1
+    const fit = Math.min(viewport.width / cols, viewport.height / rows) * boost * zoom
+    const tx = px * fit
+    const tz = pz * fit
+    camera.position.x += (tx - camera.position.x) * 0.1
+    camera.position.z += ((tz + 25 * fit) - camera.position.z) * 0.1
+    camera.position.y += ((30 * fit) - camera.position.y) * 0.1
+    camera.lookAt(tx, 4, tz)
+  })
+  return null
+}
+
 // ---------- Auto-fit world: scale so the map always fits the screen ----------
 function ScaledWorld({ cols, rows, zoom, children }: { cols: number; rows: number; zoom: number; children: ReactNode }) {
   const { viewport } = useThree()
@@ -607,12 +623,7 @@ export default function GameMap3D({
           <ContactShadows position={[0, 0.01, 0]} opacity={0.4} scale={Math.max(cols, rows) + 4} blur={2.6} far={5} frames={1} />
         </ScaledWorld>
 
-<OrbitControls
-        enablePan={false}
-        enableRotate={false}
-        enableZoom={false}
-        target={[0, 0, 0]}
-      />
+        <CameraRig px={wx} pz={wz} cols={cols} rows={rows} zoom={zoom} />
       </Canvas>
 
       {/* Transparent tap layer: captures pointer to move the player */}
