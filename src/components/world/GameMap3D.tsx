@@ -1,5 +1,5 @@
-import { useRef, useMemo, useState, useEffect, useCallback, Suspense, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
-import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
+import { useRef, useMemo, useState, useEffect, useCallback, type ReactNode, type PointerEvent as ReactPointerEvent } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { AREAS_DATA, scaleGrid, MAP_SCALE } from './areasData'
@@ -348,21 +348,46 @@ const MOVE_DELTA: Record<string, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 }
 
-// ---------- Roaming wild Pokémon (billboard sprite) ----------
-function Roaming({ x, z, image, phase }: { x: number; z: number; image: string; phase: number }) {
-  const tex = useLoader(THREE.TextureLoader, image)
-  const ref = useRef<THREE.Sprite>(null)
+// ---------- Roaming wild Pokémon (billboard sprite, sphere fallback if image fails) ----------
+const TYPE_COLORS: Record<string, string> = {
+  normal: '#a8a878', fire: '#f08030', water: '#6890f0', electric: '#f8d030',
+  grass: '#78c850', ice: '#98d8d8', fighting: '#c03028', poison: '#a040a0',
+  ground: '#e0c068', flying: '#a890f0', psychic: '#f85888', bug: '#a8b820',
+  rock: '#b8a038', ghost: '#705898', dragon: '#7038f8', dark: '#705848',
+  steel: '#b8b8d0', fairy: '#ee99ac',
+}
+function typeColor(type: string): string { return TYPE_COLORS[type] ?? '#f8d030' }
+
+function Roamer({ x, z, image, color, phase }: { x: number; z: number; image: string; color: string; phase: number }) {
+  const [tex, setTex] = useState<THREE.Texture | null>(null)
+  useEffect(() => {
+    const loader = new THREE.TextureLoader()
+    loader.setCrossOrigin('anonymous')
+    let alive = true
+    loader.load(image, (t) => { if (alive) setTex(t) }, undefined, () => { if (alive) setTex(null) })
+    return () => { alive = false }
+  }, [image])
+  const ref = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
     const t = clock.elapsedTime + phase
     if (ref.current) {
       ref.current.position.y = 0.85 + Math.sin(t * 1.6) * 0.14
-      ref.current.material.rotation = Math.sin(t * 1.1) * 0.18
+      ref.current.rotation.y = Math.sin(t * 0.9) * 0.25
     }
   })
   return (
-    <sprite ref={ref} position={[x, 0.85, z]} scale={[2, 2, 1]}>
-      <spriteMaterial map={tex} transparent depthWrite={false} />
-    </sprite>
+    <group ref={ref} position={[x, 0.85, z]}>
+      {tex ? (
+        <sprite scale={[2, 2, 1]}>
+          <spriteMaterial map={tex} transparent depthWrite={false} />
+        </sprite>
+      ) : (
+        <mesh>
+          <sphereGeometry args={[0.42, 20, 20]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.45} roughness={0.3} />
+        </mesh>
+      )}
+    </group>
   )
 }
 
@@ -406,7 +431,7 @@ export default function GameMap3D({
   // Visible wild Pokémon roaming the map (one per species pool, on walkable tiles)
   const wildSpecies = useMemo(() => WILD_POKEMON_AREAS[trainer.currentArea] ?? WILD_POKEMON_AREAS['route1'], [trainer.currentArea])
   const roamings = useMemo(() => {
-    const spots: { key: string; x: number; z: number; gx: number; gz: number; image: string }[] = []
+    const spots: { key: string; x: number; z: number; gx: number; gz: number; image: string; color: string }[] = []
     const candidates: { x: number; z: number }[] = []
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const t = to3D(grid[r][c])
@@ -424,6 +449,7 @@ export default function GameMap3D({
         z: z - rows / 2 + 0.5,
         gx: x,
         gz: z,
+        color: typeColor(sp.types[0] ?? 'normal'),
         image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${sp.id}.png`,
       })
     }
@@ -465,10 +491,16 @@ export default function GameMap3D({
     setMoving(true)
     onMove(nx, ny)
     const isRoam = roamingSet.has(`${nx},${ny}`)
-    if ((dest.encounter && Math.random() < 0.45) || isRoam) {
-      if (isRoam) { battledRef.current.add(`${nx},${ny}`); setBattleTick(t => t + 1) }
+    if (isRoam) {
+      // Stepping onto a roaming Pokémon = guaranteed immediate battle
+      battledRef.current.add(`${nx},${ny}`)
+      setBattleTick(t => t + 1)
+      onEncounter()
+      return
+    }
+    if (dest.encounter && Math.random() < 0.5) {
       if (pendEncRef.current) clearTimeout(pendEncRef.current)
-      pendEncRef.current = setTimeout(onEncounter, 550)
+      pendEncRef.current = setTimeout(onEncounter, 300)
     }
   }, [rows, cols, grid, onMove, onEncounter, roamingSet])
 
@@ -565,11 +597,9 @@ export default function GameMap3D({
 
           <Player3D x={wx} z={wz} direction={direction} moving={moving} />
 
-          <Suspense fallback={null}>
-            {visibleRoamings.map((r, i) => (
-              <Roaming key={r.key} x={r.x} z={r.z} image={r.image} phase={i * 2.1} />
-            ))}
-          </Suspense>
+          {visibleRoamings.map((r, i) => (
+            <Roamer key={r.key} x={r.x} z={r.z} image={r.image} color={r.color} phase={i * 2.1} />
+          ))}
 
           <ContactShadows position={[0, 0.01, 0]} opacity={0.4} scale={Math.max(cols, rows) + 4} blur={2.6} far={5} frames={1} />
         </ScaledWorld>
